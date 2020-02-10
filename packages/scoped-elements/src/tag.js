@@ -1,27 +1,36 @@
 let counter = 0;
-const NAME_REGEX = /[^a-zA-Z0-9]/g;
 
-const toDashCase = name => {
-  const dashCaseLetters = [];
+export const SUFFIX = 'se'; // scoped element
 
-  for (let i = 0; i < name.length; i += 1) {
-    const letter = name[i];
-    const letterLowerCase = letter.toLowerCase();
+// https://html.spec.whatwg.org/multipage/custom-elements.html#prod-potentialcustomelementname
+const pcenChar = `
+    -
+    | \\.
+    | [0-9]
+    | [a-z]
+    | \\u00B7
+    | [\\u00c0-\\u00d6]
+    | [\\u00d8-\\u00f6]
+    | [\\u00f8-\\u037d]
+    | [\\u037f-\\u1fff]
+    | [\\u200c-\\u200d]
+    | [\\u203f-\\u2040]
+    | [\\u2070-\\u218f]
+    | [\\u2c00-\\u2fef]
+    | [\\u3001-\\ud7ff]
+    | [\\uf900-\\ufdcf]
+    | [\\ufdf0-\\ufffd]
+    | [\\u10000-\\ueffff]
+`.replace(/(\r\n|r\|\n|\s)/gm, '');
 
-    if (letter !== letterLowerCase && i !== 0) {
-      dashCaseLetters.push('-');
-    }
+const tagRegExp = new RegExp(`[a-z](${pcenChar})*-(${pcenChar})*`);
 
-    dashCaseLetters.push(letterLowerCase);
-  }
-
-  return dashCaseLetters.join('');
-};
+const isValidTag = tag => tagRegExp.exec(tag) !== null;
 
 const isTagRegistered = (registry, name) => !!registry.get(name);
 
 const incrementTagName = (registry, tag) => {
-  const newName = `${tag}-${(counter += 1)}`;
+  const newName = `${tag}${(counter += 1)}`;
 
   if (isTagRegistered(registry, newName)) {
     return incrementTagName(registry, tag);
@@ -30,22 +39,16 @@ const incrementTagName = (registry, tag) => {
   return newName;
 };
 
-export const createUniqueTag = (registry, klass) => {
-  const name = klass && klass.name && klass.name.replace(NAME_REGEX, '');
-
-  if (name) {
-    let tag = toDashCase(name);
-
-    if (tag.indexOf('-') === -1) {
-      tag = `c-${tag}`;
-    }
-
-    if (isTagRegistered(registry, tag)) {
-      return incrementTagName(registry, tag);
-    }
-
-    return tag;
+export const createUniqueTag = (registry, tagName = '') => {
+  if (!isValidTag(tagName)) {
+    throw new Error('tagName is invalid');
   }
 
-  return incrementTagName(registry, 'c');
+  const tag = `${tagName}-${SUFFIX}`;
+
+  if (isTagRegistered(registry, tag)) {
+    return incrementTagName(registry, tag);
+  }
+
+  return tag;
 };
